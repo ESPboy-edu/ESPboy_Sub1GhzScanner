@@ -18,10 +18,10 @@ and www.espboy.com project
 float startFreq = 433;
 int8_t rssiThreshold = -60;
 float freqStep = 0.01;
-uint8_t scaleFactor=2;
+uint8_t scaleFactor = 2;
 
-int8_t firstHigh = -1; 
-int8_t lastHigh = -1;
+float firstHigh = -1; 
+float lastHigh = -1;
 bool redVertFlag = false;
 
 uint32_t savingTimer;
@@ -122,6 +122,8 @@ void getRSSIcc1101(float freqSet){
 
 
 void drawRSSI(){
+ static uint8_t redVertFirst, redVertLast;
+  
   for(uint8_t i=0; i < 128; i++){
     if (scanDat[i] < rssiThreshold) 
       sprSpectre.drawFastVLine(i, abs(scanDat[i]/2), (100-abs(scanDat[i])/2), TFT_BLUE);
@@ -131,14 +133,16 @@ void drawRSSI(){
 
  for(uint8_t i=0; i<128; i++){
    if (scanDat[i] >= rssiThreshold){
-      firstHigh = i;
+      redVertFirst = i;
+      firstHigh = startFreq+i*freqStep;
       redVertFlag = true;
       break;}
  }
 
  for(uint8_t i=127; i>0; i--){
    if (scanDat[i] >= rssiThreshold){
-      lastHigh = i;
+      redVertLast = i;
+      lastHigh = startFreq+i*freqStep;
       break;}
  }
 
@@ -147,8 +151,8 @@ void drawRSSI(){
  
  if (redVertFlag){
     redVertFlag = false;
-    sprSpectre.drawFastVLine(lastHigh, 0, 50, TFT_RED);
-    sprSpectre.drawFastVLine(firstHigh, 0, 50, TFT_RED);
+    sprSpectre.drawFastVLine(redVertFirst, 0, 50, TFT_RED);
+    sprSpectre.drawFastVLine(redVertLast, 0, 50, TFT_RED);
     drawNumbers();
     sprNumbers.pushSprite(0, 112);
  }
@@ -180,9 +184,9 @@ void drawNumbers(){
   sprNumbers.setTextColor(TFT_RED);
   String toPrintF, toPrintL;
   if(firstHigh == -1) toPrintF = "---.--";
-  else toPrintF = (String)(startFreq+firstHigh*freqStep);
+  else toPrintF = (String)firstHigh;
   if(lastHigh == -1) toPrintL = "---.--";
-  else toPrintL = (String)(startFreq+lastHigh*freqStep);
+  else toPrintL = (String)lastHigh;
   sprNumbers.drawString(toPrintF, 0, 8);
   sprNumbers.drawString(toPrintL, 128-6*6, 8);
 }
@@ -271,5 +275,5 @@ void loop(){
   
   doKeysActions();
 
-  if (savingFlag && millis()-savingTimer > 3000) saveParam();
+  if (savingFlag && millis() - savingTimer > 3000) saveParam();
 }
