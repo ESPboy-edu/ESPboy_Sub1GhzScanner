@@ -1,13 +1,20 @@
 /*
 ESPboy Sub1GhzScaner using CC1101 module
-by RomanS 03.12.2021
+by RomanS 03.12.2021 - 24.07.2024
 check ESPboy_Sub1GhzInspector
 and www.espboy.com project
 */
 
 #include "lib/ESPboyInit.h"
 #include "lib/ESPboyInit.cpp"
-#include <ELECHOUSE_CC1101_SRC_DRV.h>
+#include "lib/SmartRC-CC1101-Driver-Lib-master/ELECHOUSE_CC1101_SRC_DRV.h"
+#include "lib/SmartRC-CC1101-Driver-Lib-master/ELECHOUSE_CC1101_SRC_DRV.cpp"
+
+//#include "lib/ESPboyTerminalGUI.h"
+//#include "lib/ESPboyTerminalGUI.cpp"
+//#include "lib/ESPboyOTA2.h"
+//#include "lib/ESPboyOTA2.cpp"
+
 #include <ESP_EEPROM.h>
 
 #define CC1101chipSelectPin D8
@@ -89,16 +96,19 @@ TFT_eSprite sprSpectre = TFT_eSprite(&myESPboy.tft);
 TFT_eSprite sprWaterfall = TFT_eSprite(&myESPboy.tft);
 TFT_eSprite sprNumbers = TFT_eSprite(&myESPboy.tft);
 
+//ESPboyTerminalGUI *terminalGUIobj = NULL;
+//ESPboyOTA2 *OTA2obj = NULL;
 
 
 void initCC1101(){
+    
   myESPboy.mcp.digitalWrite(TFTchipSelectPin, HIGH);
   digitalWrite(CC1101chipSelectPin, LOW);
   
   ELECHOUSE_cc1101.Init();
   ELECHOUSE_cc1101.setRxBW(58);
   ELECHOUSE_cc1101.SetRx();
-  
+
   myESPboy.mcp.digitalWrite(TFTchipSelectPin, LOW);
   digitalWrite(CC1101chipSelectPin, HIGH);
 }
@@ -160,7 +170,7 @@ void drawRSSI(){
  for(uint8_t i=0; i<128; i++){
    uint16_t addr = (100+scanDat[i])*4*scaleFactor;
    if (addr > 430) {addr = 430; scaleFactor = 1;};
-   sprWaterfall.drawPixel(i, 58, myESPboy.tft.color24to16(pgm_read_dword(ironPalette+addr)));
+   sprWaterfall.drawPixel(i, 0, myESPboy.tft.color24to16(pgm_read_dword(ironPalette+addr)));
  }
 
  sprWaterfall.drawPixel(64, 58, TFT_DARKGREY);
@@ -248,15 +258,39 @@ void saveParam(){
 
 
 void setup(){  
-  Serial.begin(115200);
-  EEPROM.begin(sizeof(saveStruct));
+  //Serial.begin(115200);
   myESPboy.begin("Sub1Ghz scanner");
+
+/*
+//Check OTA2
+  if (myESPboy.getKeys()&PAD_ACT || myESPboy.getKeys()&PAD_ESC) { 
+     terminalGUIobj = new ESPboyTerminalGUI(&myESPboy.tft, &myESPboy.mcp);
+     OTA2obj = new ESPboyOTA2(terminalGUIobj);
+  }
+*/
+
+  myESPboy.mcp.digitalWrite(TFTchipSelectPin, HIGH);
+  digitalWrite(CC1101chipSelectPin, LOW);
+
+    // if return 0 then CC1101 is connected
+  if(ELECHOUSE_cc1101.getCC1101()){
+    myESPboy.mcp.digitalWrite(TFTchipSelectPin, LOW);
+    digitalWrite(CC1101chipSelectPin, HIGH);
+    myESPboy.tft.setTextColor(0xF800);
+    myESPboy.tft.drawString("CC1101 module", 28 ,40);
+    myESPboy.tft.drawString("not found", 37 ,55);
+    while(1) delay(100);
+  }
+  
+  EEPROM.begin(sizeof(saveStruct));
   sprSpectre.createSprite(128, 51);
   sprWaterfall.createSprite(128, 59);
   sprNumbers.createSprite(128, 16);
   sprWaterfall.fillSprite(TFT_BLACK);
   sprNumbers.fillSprite(TFT_BLACK);
+  
   initCC1101();
+  
   loadParam();
   drawNumbers();
   sprNumbers.pushSprite(0, 112);
@@ -268,7 +302,7 @@ void loop(){
   getRSSIcc1101(startFreq);
 
   sprSpectre.fillSprite(TFT_BLACK);
-  sprWaterfall.scroll(0,-1);
+  sprWaterfall.scroll(0, 1);
   drawRSSI();
   sprSpectre.pushSprite(0, 0);
   sprWaterfall.pushSprite(0, 52);
